@@ -131,7 +131,7 @@ impl ClientState {
                     let port = lock_file_data.next().unwrap();
                     let pass = lock_file_data.next().unwrap().to_owned();
 
-                    let auth_token = base64::engine::general_purpose::STANDARD.encode(&pass);
+                    let auth_token = base64::engine::general_purpose::STANDARD.encode(&format!("riot:{}", &pass));
 
                     ClientState::Alive(ClientConnection {
                         url: Url::parse(&format!("https://127.0.0.1:{}/", port)).unwrap(),
