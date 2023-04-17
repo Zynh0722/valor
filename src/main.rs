@@ -6,30 +6,10 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use base64::Engine;
 use dotenv::dotenv;
 use notify::{Event, RecursiveMode, Watcher};
 use reqwest::Url;
-
-#[derive(Debug)]
-#[allow(dead_code)]
-struct AppState {
-    league_folder: PathBuf,
-    lock_file_path: PathBuf,
-    client_url: ClientState,
-}
-
-#[derive(Debug)]
-enum ClientState {
-    Dead,
-    Alive(ClientConnection),
-}
-
-#[derive(Debug)]
-#[allow(dead_code)]
-struct ClientConnection {
-    url: Url,
-    pass: String,
-}
 
 fn main() -> notify::Result<()> {
     let state = Arc::new(Mutex::new(init_state()));
@@ -74,6 +54,28 @@ fn init_state() -> AppState {
         lock_file_path,
         client_url,
     }
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+struct AppState {
+    league_folder: PathBuf,
+    lock_file_path: PathBuf,
+    client_url: ClientState,
+}
+
+#[derive(Debug)]
+enum ClientState {
+    Dead,
+    Alive(ClientConnection),
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+struct ClientConnection {
+    url: Url,
+    pass: String,
+    auth_token: String,
 }
 
 impl AppState {
@@ -127,10 +129,14 @@ impl ClientState {
                     let mut lock_file_data = lock_file_data.skip(2);
 
                     let port = lock_file_data.next().unwrap();
-                    let pass = lock_file_data.next().unwrap();
+                    let pass = lock_file_data.next().unwrap().to_owned();
+
+                    let auth_token = base64::engine::general_purpose::STANDARD.encode(&pass);
+
                     ClientState::Alive(ClientConnection {
                         url: Url::parse(&format!("https://127.0.0.1:{}/", port)).unwrap(),
-                        pass: pass.to_owned(),
+                        pass,
+                        auth_token,
                     })
                 } else {
                     ClientState::Dead

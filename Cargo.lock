@@ -911,6 +911,7 @@ dependencies = [
 name = "valor"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "dotenv",
  "notify",
  "reqwest",
