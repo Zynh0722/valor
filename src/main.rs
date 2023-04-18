@@ -1,14 +1,11 @@
 use std::{
     env,
-    fs::File,
-    io::Read,
-    path::{Path, PathBuf},
+    path::Path,
     sync::{Arc, Mutex},
 };
 
-use base64::Engine;
 use dotenv::dotenv;
-use notify::{Event, RecursiveMode, Watcher};
+use notify::{RecursiveMode, Watcher};
 use valor_lib::{AppState, ClientState};
 
 fn main() -> notify::Result<()> {
