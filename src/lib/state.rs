@@ -1,23 +1,18 @@
 use std::{
-    io,
+    env, io,
     path::{Path, PathBuf},
 };
 
 use base64::Engine;
+use dotenv::dotenv;
 use notify::Event;
 use reqwest::Url;
 
 #[derive(Debug)]
-pub struct AppState {
+pub struct ConnectionState {
     pub league_folder: PathBuf,
     pub lock_file_path: PathBuf,
     pub client_url: Option<ClientConnection>,
-}
-
-#[derive(Debug)]
-pub enum ClientState {
-    Dead,
-    Alive(ClientConnection),
 }
 
 #[derive(Debug)]
@@ -28,7 +23,24 @@ pub struct ClientConnection {
     pub auth_token: String,
 }
 
-impl AppState {
+impl ConnectionState {
+    pub fn init() -> Self {
+        dotenv().ok();
+
+        let league_folder = env::var("LEAGUE_FOLDER").unwrap();
+        let league_folder = Path::new(&league_folder).to_owned();
+
+        let lock_file_path = league_folder.join("lockfile");
+
+        let client_url = ClientConnection::parse(&lock_file_path).ok();
+
+        ConnectionState {
+            league_folder,
+            lock_file_path,
+            client_url,
+        }
+    }
+
     pub fn update_state(&mut self, event: Event) -> bool {
         // TODO: figure out if unwrap is ok here, or fix it anyway
         let event_path = event.paths.iter().next().unwrap();
