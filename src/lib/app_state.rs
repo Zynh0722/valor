@@ -1,6 +1,5 @@
 use std::{
-    fs::File,
-    io::Read,
+    io::{self},
     path::{Path, PathBuf},
 };
 
@@ -12,7 +11,7 @@ use reqwest::Url;
 pub struct AppState {
     pub league_folder: PathBuf,
     pub lock_file_path: PathBuf,
-    pub client_url: ClientState,
+    pub client_url: Option<ClientConnection>,
 }
 
 #[derive(Debug)]
@@ -39,11 +38,11 @@ impl AppState {
             return match event.kind {
                 // TODO:: Test if Create can be removed on all platforms
                 Create(_) | Modify(_) => {
-                    self.client_url = ClientState::parse(event_path);
+                    self.client_url = ClientConnection::parse(event_path).ok();
                     true
                 }
                 Remove(_) => {
-                    self.client_url = ClientState::Dead;
+                    self.client_url = None;
                     true
                 }
                 _ => false,
@@ -61,40 +60,42 @@ impl AppState {
     }
 }
 
-impl ClientState {
-    pub fn parse<P>(path: P) -> ClientState
+impl ClientConnection {
+    pub fn parse<P>(path: P) -> Result<ClientConnection, io::Error>
     where
         P: AsRef<Path>,
     {
-        match File::open(path).as_mut() {
-            Ok(file) => {
-                let mut lock_file_data = String::new();
-                file.read_to_string(&mut lock_file_data).unwrap();
+        Self::parse_str(std::fs::read_to_string(path)?)
+    }
 
-                println!("{}", &lock_file_data);
+    pub fn parse_str<S>(s: S) -> Result<ClientConnection, io::Error>
+    where
+        S: AsRef<str>,
+    {
+        let s = s.as_ref();
+        println!("{}", s);
 
-                let lock_file_data = lock_file_data.split(":");
+        let mut lock_file_data = s.split(":");
 
-                if lock_file_data.clone().count() == 5 {
-                    // LeagueClient and PID are junk
-                    let mut lock_file_data = lock_file_data.skip(2);
+        if lock_file_data.clone().count() == 5 {
+            // Name and PID are junk for now
+            let _ = lock_file_data.next(); // Process Name
+            let _ = lock_file_data.next(); // Process PID
 
-                    let port = lock_file_data.next().unwrap();
-                    let pass = lock_file_data.next().unwrap().to_owned();
+            let port = lock_file_data.next().unwrap();
+            let pass = lock_file_data.next().unwrap().to_owned();
+            let protocol = lock_file_data.next().unwrap();
 
-                    let auth_token = base64::engine::general_purpose::STANDARD
-                        .encode(&format!("riot:{}", &pass));
+            let auth_token =
+                base64::engine::general_purpose::STANDARD.encode(&format!("riot:{pass}"));
 
-                    ClientState::Alive(ClientConnection {
-                        url: Url::parse(&format!("https://127.0.0.1:{}/", port)).unwrap(),
-                        pass,
-                        auth_token,
-                    })
-                } else {
-                    ClientState::Dead
-                }
-            }
-            Err(_) => ClientState::Dead,
+            Ok(ClientConnection {
+                url: Url::parse(&format!("{protocol}://127.0.0.1:{port}/")).unwrap(),
+                pass,
+                auth_token,
+            })
+        } else {
+            Err(io::Error::new(io::ErrorKind::Other, "Invalid Lockfile"))
         }
     }
 }
