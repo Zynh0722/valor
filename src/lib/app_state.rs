@@ -68,6 +68,7 @@ impl ClientConnection {
         Self::parse_str(std::fs::read_to_string(path)?)
     }
 
+    // TODO:: Cleanup unwraps -- SNAFU?
     pub fn parse_str<S>(s: S) -> Result<ClientConnection, io::Error>
     where
         S: AsRef<str>,
