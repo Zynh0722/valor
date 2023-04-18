@@ -1,5 +1,5 @@
 use std::{
-    io::{self},
+    io,
     path::{Path, PathBuf},
 };
 
