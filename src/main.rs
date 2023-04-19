@@ -11,7 +11,7 @@ fn main() {
         connection: Arc::new(Mutex::new(ConnectionState::init())),
     };
 
-    watch_connection(state.connection.clone()).unwrap();
+    let _watcher = watch_connection(state.connection.clone()).unwrap();
 
     loop {}
 }
