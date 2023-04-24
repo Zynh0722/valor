@@ -8,7 +8,8 @@ struct AppState {
     watcher: Arc<Mutex<Option<ReadDirectoryChangesWatcher>>>,
 }
 
-fn main() -> ! {
+#[tokio::main]
+async fn main() -> ! {
     let state = AppState {
         connection: Arc::new(Mutex::new(ConnectionState::init())),
         watcher: Arc::new(Mutex::new(None)),
