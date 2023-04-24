@@ -14,3 +14,4 @@ base64 = "0.21.0"
 dotenv = "0.15.0"
 notify = "5.1.0"
 reqwest = "0.11.16"
+league-client-connector = { git = "https://github.com/Zynh0722/league-client-connector.git", branch = "master", features = ["lockfile_path"] }

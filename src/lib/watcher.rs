@@ -1,17 +1,19 @@
 use std::sync::{Arc, Mutex};
 
-use notify::{RecursiveMode, Watcher, ReadDirectoryChangesWatcher, Event};
+use notify::{Event, ReadDirectoryChangesWatcher, RecursiveMode, Watcher};
 
 use crate::ConnectionState;
 
-pub fn watch_connection(connection: Arc<Mutex<ConnectionState>>) -> notify::Result<ReadDirectoryChangesWatcher> {
+pub fn watch_connection(
+    connection: Arc<Mutex<ConnectionState>>,
+) -> notify::Result<ReadDirectoryChangesWatcher> {
     let mut watcher = {
         let connection = connection.clone();
         notify::recommended_watcher(move |res: notify::Result<Event>| match res {
             Ok(event) => {
                 let mut connection = connection.lock().unwrap();
                 if connection.update_state(event) {
-                    println!("{:?}", connection);
+                    println!("{connection:#?}");
                 }
             }
             Err(e) => println!("watch error: {:?}", e),
@@ -20,8 +22,13 @@ pub fn watch_connection(connection: Arc<Mutex<ConnectionState>>) -> notify::Resu
 
     {
         let connection = connection.lock().unwrap();
-        watcher.watch(&connection.league_folder, RecursiveMode::NonRecursive)?;
-        println!("{connection:?}");
+
+        if let Some(lockfile) = connection.lockfile.as_ref() {
+            let league_folder = lockfile.path.parent().unwrap();
+            println!("{league_folder:?}");
+            watcher.watch(&league_folder, RecursiveMode::NonRecursive)?;
+            println!("{connection:#?}");
+        }
     }
 
     Ok(watcher)

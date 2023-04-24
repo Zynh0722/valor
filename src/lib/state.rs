@@ -1,18 +1,12 @@
-use std::{
-    env, io,
-    path::{Path, PathBuf},
-};
+use std::path::Path;
 
-use base64::Engine;
-use dotenv::dotenv;
+use league_client_connector::{LeagueClientConnector, RiotLockFile};
 use notify::Event;
 use reqwest::Url;
 
 #[derive(Debug)]
 pub struct ConnectionState {
-    pub league_folder: PathBuf,
-    pub lock_file_path: PathBuf,
-    pub client_url: Option<ClientConnection>,
+    pub lockfile: Option<RiotLockFile>,
 }
 
 #[derive(Debug)]
@@ -25,20 +19,8 @@ pub struct ClientConnection {
 
 impl ConnectionState {
     pub fn init() -> Self {
-        dotenv().ok();
-
-        let league_folder = env::var("LEAGUE_FOLDER").unwrap();
-        let league_folder = Path::new(&league_folder).to_owned();
-
-        let lock_file_path = league_folder.join("lockfile");
-
-        let client_url = ClientConnection::parse(&lock_file_path).ok();
-
-        ConnectionState {
-            league_folder,
-            lock_file_path,
-            client_url,
-        }
+        let lockfile = LeagueClientConnector::parse_lockfile().ok();
+        ConnectionState { lockfile }
     }
 
     pub fn update_state(&mut self, event: Event) -> bool {
@@ -50,11 +32,11 @@ impl ConnectionState {
             return match event.kind {
                 // TODO:: Test if Create can be removed on all platforms
                 Create(_) | Modify(_) => {
-                    self.client_url = ClientConnection::parse(event_path).ok();
+                    self.lockfile = LeagueClientConnector::parse_lockfile().ok();
                     true
                 }
                 Remove(_) => {
-                    self.client_url = None;
+                    self.lockfile = None;
                     true
                 }
                 _ => false,
@@ -68,47 +50,10 @@ impl ConnectionState {
     where
         P: AsRef<Path>,
     {
-        self.lock_file_path == path.as_ref()
-    }
-}
+        if let Some(lockfile) = self.lockfile.as_ref() {
+            return lockfile.path == path.as_ref();
+        };
 
-impl ClientConnection {
-    pub fn parse<P>(path: P) -> Result<ClientConnection, io::Error>
-    where
-        P: AsRef<Path>,
-    {
-        Self::parse_str(std::fs::read_to_string(path)?)
-    }
-
-    // TODO:: Cleanup unwraps -- SNAFU?
-    pub fn parse_str<S>(s: S) -> Result<ClientConnection, io::Error>
-    where
-        S: AsRef<str>,
-    {
-        let s = s.as_ref();
-        println!("{}", s);
-
-        let mut lock_file_data = s.split(":");
-
-        if lock_file_data.clone().count() == 5 {
-            // Name and PID are junk for now
-            let _ = lock_file_data.next(); // Process Name
-            let _ = lock_file_data.next(); // Process PID
-
-            let port = lock_file_data.next().unwrap();
-            let pass = lock_file_data.next().unwrap().to_owned();
-            let protocol = lock_file_data.next().unwrap();
-
-            let auth_token =
-                base64::engine::general_purpose::STANDARD.encode(&format!("riot:{pass}"));
-
-            Ok(ClientConnection {
-                url: Url::parse(&format!("{protocol}://127.0.0.1:{port}/")).unwrap(),
-                pass,
-                auth_token,
-            })
-        } else {
-            Err(io::Error::new(io::ErrorKind::Other, "Invalid Lockfile"))
-        }
+        false
     }
 }
