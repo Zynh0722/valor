@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use league_client_connector::{LeagueClientConnector, RiotLockFile};
 use notify::Event;
@@ -7,6 +7,7 @@ use reqwest::Url;
 #[derive(Debug)]
 pub struct ConnectionState {
     pub lockfile: Option<RiotLockFile>,
+    pub known_path: Option<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -20,7 +21,11 @@ pub struct ClientConnection {
 impl ConnectionState {
     pub fn init() -> Self {
         let lockfile = LeagueClientConnector::parse_lockfile().ok();
-        ConnectionState { lockfile }
+        let known_path = lockfile.as_ref().map(|lf| lf.path.clone());
+        ConnectionState {
+            lockfile,
+            known_path,
+        }
     }
 
     pub fn update_state(&mut self, event: Event) -> bool {
@@ -28,11 +33,18 @@ impl ConnectionState {
         let event_path = event.paths.iter().next().unwrap();
 
         if self.check_path(event_path) {
-            use notify::EventKind::{Create, Modify, Remove};
+            use notify::EventKind::{Modify, Remove};
+
             return match event.kind {
                 // TODO:: Test if Create can be removed on all platforms
-                Create(_) | Modify(_) => {
-                    self.lockfile = LeagueClientConnector::parse_lockfile().ok();
+                // ! I think it can, as the LCU first creates an empty
+                //   lockfile, then fills it with data, but this behaviour
+                //   may change depending on platform
+                Modify(_) => {
+                    self.lockfile = LeagueClientConnector::parse_lockfile_from_path(
+                        self.known_path.as_ref().unwrap(),
+                    )
+                    .ok();
                     true
                 }
                 Remove(_) => {
@@ -50,8 +62,8 @@ impl ConnectionState {
     where
         P: AsRef<Path>,
     {
-        if let Some(lockfile) = self.lockfile.as_ref() {
-            return lockfile.path == path.as_ref();
+        if let Some(known_path) = self.known_path.as_ref() {
+            return known_path == path.as_ref();
         };
 
         false

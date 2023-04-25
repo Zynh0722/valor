@@ -1,11 +1,12 @@
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}, time::Duration};
 
-use notify::ReadDirectoryChangesWatcher;
+use notify::RecommendedWatcher;
 use valor_lib::{watch_connection, ConnectionState};
 
+#[derive(Debug)]
 struct AppState {
     connection: Arc<Mutex<ConnectionState>>,
-    watcher: Arc<Mutex<Option<ReadDirectoryChangesWatcher>>>,
+    watcher: Arc<Mutex<Option<RecommendedWatcher>>>,
 }
 
 #[tokio::main]
@@ -15,10 +16,9 @@ async fn main() -> ! {
         watcher: Arc::new(Mutex::new(None)),
     };
 
-    {
-        let mut watcher = state.watcher.lock().unwrap();
-        *watcher = watch_connection(state.connection.clone()).ok();
-    }
+    watch_connection(state.connection.clone(), state.watcher.clone());
 
-    loop {}
+    loop {
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
 }
