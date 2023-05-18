@@ -1,15 +1,15 @@
 use std::{sync::Arc, time::Duration};
 
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
+use tokio::sync::mpsc::UnboundedSender;
 
 use crate::ConnectionState;
 
 pub async fn watch_connection(
     connection: Arc<tokio::sync::Mutex<ConnectionState>>,
-    watcher: Arc<std::sync::Mutex<Option<RecommendedWatcher>>>,
-) {
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
-
+    // watcher: Arc<std::sync::Mutex<Option<RecommendedWatcher>>>,
+    event_tx: UnboundedSender<Event>,
+) -> RecommendedWatcher {
     {
         let connection = connection.clone();
 
@@ -25,11 +25,11 @@ pub async fn watch_connection(
             *connection = inner_connection;
         }
 
-        let outer_watcher = watcher;
+        // let outer_watcher = watcher;
         // Create the watcher struct
         let mut watcher =
             notify::recommended_watcher(move |res: notify::Result<Event>| match res {
-                Ok(event) => tx.send(event).unwrap(),
+                Ok(event) => event_tx.send(event).unwrap(),
                 Err(e) => println!("watch error: {e:?}"),
             })
             .unwrap();
@@ -50,20 +50,14 @@ pub async fn watch_connection(
         // Not exactly sure if this means the watching will be done in the blocking thread,
         // honestly its probably fine if it doesn't, either way Im leaving this how it is
         // for now
-        {
-            let mut outer_watcher = outer_watcher.lock().unwrap();
+        // {
+        //     let mut outer_watcher = outer_watcher.lock().unwrap();
+        //
+        //     *outer_watcher = Some(watcher);
+        // }
 
-            *outer_watcher = Some(watcher);
-        }
+        watcher
     }
 
     // Listen to watcher events with an async task
-    tokio::spawn(async move {
-        while let Some(event) = rx.recv().await {
-            let mut connection = connection.lock().await;
-            if connection.update_state(event).await {
-                println!("{connection:#?}");
-            }
-        }
-    });
 }

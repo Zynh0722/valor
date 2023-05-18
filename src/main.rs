@@ -1,24 +1,33 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
-use notify::RecommendedWatcher;
+use tokio::sync::mpsc;
 use valor_lib::{watch_connection, ConnectionState};
+
+use tokio::sync::Mutex as TokioMutex;
 
 #[derive(Debug)]
 struct AppState {
-    connection: Arc<tokio::sync::Mutex<ConnectionState>>,
-    watcher: Arc<std::sync::Mutex<Option<RecommendedWatcher>>>,
+    connection: Arc<TokioMutex<ConnectionState>>,
 }
 
 #[tokio::main]
-async fn main() -> ! {
+async fn main() {
     let state = AppState {
-        connection: Arc::new(tokio::sync::Mutex::new(ConnectionState::init().await)),
-        watcher: Arc::new(std::sync::Mutex::new(None)),
+        connection: Arc::new(TokioMutex::new(ConnectionState::init().await)),
     };
 
-    watch_connection(state.connection.clone(), state.watcher.clone()).await;
+    let (tx, mut rx) = mpsc::unbounded_channel::<notify::Event>();
 
-    loop {
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    }
+    let _file_system_watcher = watch_connection(state.connection.clone(), tx.clone()).await;
+
+    tokio::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            let mut connection = state.connection.lock().await;
+            if connection.update_state(event).await {
+                println!("{connection:#?}");
+            }
+        }
+    })
+    .await
+    .unwrap();
 }

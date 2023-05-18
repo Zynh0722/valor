@@ -54,8 +54,11 @@ impl ConnectionState {
     }
 
     pub async fn update_state(&mut self, event: Event) -> bool {
-        // TODO: figure out if unwrap is ok here, or fix it anyway
-        let event_path = event.paths.iter().next().unwrap();
+        let event_path = event
+            .paths
+            .iter()
+            .next()
+            .expect("There should be at least one path in a notify file update");
 
         if self.check_path(event_path) {
             use notify::EventKind::{Modify, Remove};
