@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use league_client_connector::{LeagueClientConnector, RiotLockFile};
 use native_tls::TlsConnector;
 use notify::Event;
-use reqwest::Url;
+// use reqwest::Url;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{
     connect_async_tls_with_config,
@@ -18,38 +18,38 @@ use tokio_tungstenite::{
 pub struct ConnectionState {
     pub lockfile: Option<RiotLockFile>,
     pub known_path: Option<PathBuf>,
-    pub ws_stream: Option<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+    // pub ws_stream: Option<WebSocketStream<MaybeTlsStream<TcpStream>>>,
 }
 
-#[derive(Debug)]
-pub struct ClientConnection {
-    pub url: Url,
-    pub pass: String,
-    // This exists pretty much exclusively for debug // TODO: remove or make feature
-    pub auth_token: String,
-}
+// #[derive(Debug)]
+// pub struct ClientConnection {
+//     pub url: Url,
+//     pub pass: String,
+//     // This exists pretty much exclusively for debug // TODO: remove or make feature
+//     pub auth_token: String,
+// }
 
 impl ConnectionState {
     pub async fn init() -> Self {
         let lockfile = LeagueClientConnector::parse_lockfile().ok();
         let known_path = lockfile.as_ref().map(|lf| lf.path.clone());
 
-        let ws_stream = if let Some(lockfile) = lockfile.as_ref() {
-            Self::get_ws_stream(lockfile)
-                .await
-                .map_err(|err| {
-                    println!("{err:?}");
-                    err
-                })
-                .ok()
-        } else {
-            None
-        };
+        // let ws_stream = if let Some(lockfile) = lockfile.as_ref() {
+        //     Self::get_ws_stream(lockfile)
+        //         .await
+        //         .map_err(|err| {
+        //             println!("{err:?}");
+        //             err
+        //         })
+        //         .ok()
+        // } else {
+        //     None
+        // };
 
         ConnectionState {
             lockfile,
             known_path,
-            ws_stream,
+            // ws_stream,
         }
     }
 
@@ -77,16 +77,16 @@ impl ConnectionState {
                         changed = true;
                     }
 
-                    if let Some(lockfile) = self.lockfile.as_ref() {
-                        self.ws_stream = Self::get_ws_stream(lockfile).await.ok();
-                        changed = true;
-                    }
+                    // if let Some(lockfile) = self.lockfile.as_ref() {
+                    //     self.ws_stream = Self::get_ws_stream(lockfile).await.ok();
+                    //     changed = true;
+                    // }
 
                     changed
                 }
                 Remove(_) => {
                     self.lockfile = None;
-                    self.ws_stream = None;
+                    // self.ws_stream = None;
                     true
                 }
                 _ => false,
@@ -107,7 +107,7 @@ impl ConnectionState {
         false
     }
 
-    async fn get_ws_stream(
+    async fn _get_ws_stream(
         lockfile: &RiotLockFile,
     ) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>, tokio_tungstenite::tungstenite::Error>
     {
