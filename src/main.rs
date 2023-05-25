@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use std::{println, sync::Arc};
 
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{oneshot, watch};
 use valor_lib::{watch_connection, ConnectionState};
 
 use tokio::sync::Mutex as TokioMutex;
@@ -16,29 +16,42 @@ async fn main() {
         connection: Arc::new(TokioMutex::new(ConnectionState::init().await)),
     };
 
-    let (notify_tx, mut notify_rx) = mpsc::unbounded_channel::<notify::Event>();
+    let (watch_tx, mut watch_rx) = watch::channel::<Option<notify::Event>>(None);
     let (init_tx, init_rx) = oneshot::channel::<ConnectionState>();
 
-    let _file_system_watcher = watch_connection(init_tx, notify_tx.clone()).await;
+    let _file_system_watcher = watch_connection(init_tx, watch_tx).await;
 
     // Main app layer start
     {
         let connection = state.connection.clone();
         tokio::spawn(async move {
             let initial_state = init_rx.await.unwrap();
-            *connection.lock().await = initial_state;
+            let mut connection = connection.lock().await;
+            *connection = initial_state;
+            println!(
+                "lockfile: {:#?}\nknown_path: {:#?}",
+                connection.lockfile, connection.known_path
+            );
         });
     }
 
-    tokio::spawn(async move {
-        while let Some(event) = notify_rx.recv().await {
+    let watch_handle = tokio::spawn(async move {
+        while watch_rx.changed().await.is_ok() {
+            let event = watch_rx.borrow().clone().unwrap();
+
             let mut connection = state.connection.lock().await;
-            if connection.update_state(event).await {
-                println!("{connection:#?}");
+            let updated = connection.update_state(event).await;
+            if updated {
+                println!(
+                    "lockfile: {:#?}\nknown_path: {:#?}",
+                    connection.lockfile, connection.known_path
+                );
             }
         }
-    })
-    .await
-    .unwrap();
+    });
+
+    tokio::select! {
+        _ = watch_handle => (),
+    }
     // Main app layer end
 }
