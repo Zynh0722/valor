@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::{oneshot, watch};
@@ -44,6 +44,9 @@ pub async fn watch_connection(
 }
 
 fn is_lockfile_event(event: &Event) -> bool {
-    // TODO: clean up these unwraps
-    event.paths.iter().next().unwrap().file_name().unwrap() == "lockfile"
+    event.paths.iter().next().map_or(false, is_lockfile_path)
+}
+
+fn is_lockfile_path(path: &PathBuf) -> bool {
+    path.file_name().map_or(false, |name| name == "lockfile")
 }
