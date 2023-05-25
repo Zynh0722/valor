@@ -13,7 +13,7 @@ pub async fn watch_connection(
         let mut connection = ConnectionState::init().await;
 
         while connection.known_path.is_none() {
-            std::thread::sleep(Duration::from_secs(1));
+            tokio::time::sleep(Duration::from_secs(1)).await;
             connection = ConnectionState::init().await;
         }
 
