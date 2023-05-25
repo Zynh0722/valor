@@ -35,8 +35,6 @@ pub async fn watch_connection(
 
         watcher
     }
-
-    // Listen to watcher events with an async task
 }
 
 fn send_event(tx: &watch::Sender<Option<Event>>, event: Event) {
