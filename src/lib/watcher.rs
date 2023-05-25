@@ -19,11 +19,7 @@ pub async fn watch_connection(
 
         let mut watcher =
             notify::recommended_watcher(move |res: notify::Result<Event>| match res {
-                Ok(event) => {
-                    if is_lockfile_event(&event) {
-                        event_tx.send(Some(event)).unwrap();
-                    }
-                }
+                Ok(event) => send_event(&event_tx, event),
                 Err(e) => println!("watch error: {e:?}"),
             })
             .unwrap();
@@ -41,6 +37,12 @@ pub async fn watch_connection(
     }
 
     // Listen to watcher events with an async task
+}
+
+fn send_event(tx: &watch::Sender<Option<Event>>, event: Event) {
+    if is_lockfile_event(&event) {
+        tx.send(Some(event)).unwrap();
+    }
 }
 
 fn is_lockfile_event(event: &Event) -> bool {
