@@ -17,12 +17,11 @@ pub async fn watch_connection(
             connection = ConnectionState::init().await;
         }
 
-        let mut watcher =
-            notify::recommended_watcher(move |res: notify::Result<Event>| match res {
-                Ok(event) => send_event(&event_tx, event),
-                Err(e) => println!("watch error: {e:?}"),
-            })
-            .unwrap();
+        let mut watcher = notify::recommended_watcher(move |res| match res {
+            Ok(event) => send_event(&event_tx, event),
+            Err(e) => println!("watch error: {e:?}"),
+        })
+        .unwrap();
 
         // Unwrap is safe here because known_path is Some
         let lockfile = connection.lockfile.as_ref().unwrap();
