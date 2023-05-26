@@ -10,8 +10,20 @@ struct AppState {
     connection: Arc<TokioMutex<ConnectionState>>,
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Unable to start tokio runtime");
+
+    let _enter = rt.enter();
+
+    std::thread::spawn(move || rt.block_on(tokio_main()))
+        .join()
+        .expect("Bad Join");
+}
+
+async fn tokio_main() {
     let state = AppState {
         connection: Arc::new(TokioMutex::new(ConnectionState::init().await)),
     };
