@@ -28,10 +28,7 @@ async fn main() {
             let initial_state = init_rx.await.unwrap();
             let mut connection = connection.lock().await;
             *connection = initial_state;
-            println!(
-                "lockfile: {:#?}\nknown_path: {:#?}",
-                connection.lockfile, connection.known_path
-            );
+            print_connection(&connection);
         });
     }
 
@@ -42,10 +39,7 @@ async fn main() {
             let mut connection = state.connection.lock().await;
             let updated = connection.update_state(event).await;
             if updated {
-                println!(
-                    "lockfile: {:#?}\nknown_path: {:#?}",
-                    connection.lockfile, connection.known_path
-                );
+                print_connection(&connection);
             }
         }
     });
@@ -54,4 +48,11 @@ async fn main() {
         _ = watch_handle => (),
     }
     // Main app layer end
+}
+
+fn print_connection(connection: &ConnectionState) {
+    println!(
+        "lockfile: {:#?}\nknown_path: {:#?}",
+        connection.lockfile, connection.known_path
+    );
 }
