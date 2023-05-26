@@ -24,12 +24,12 @@ pub async fn watch_connection(
             })
             .unwrap();
 
-        if let Some(lockfile) = connection.lockfile.as_ref() {
-            let league_folder = lockfile.path.parent().unwrap();
-            watcher
-                .watch(&league_folder, RecursiveMode::NonRecursive)
-                .unwrap();
-        }
+        // Unwrap is safe here because known_path is Some
+        let lockfile = connection.lockfile.as_ref().unwrap();
+        let league_folder = lockfile.path.parent().unwrap();
+        watcher
+            .watch(&league_folder, RecursiveMode::NonRecursive)
+            .unwrap();
 
         init_tx.send(connection).unwrap();
 
