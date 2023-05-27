@@ -1,5 +1,3 @@
-use std::println;
-
 use valor::Valor;
 
 fn main() {
