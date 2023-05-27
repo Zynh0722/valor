@@ -24,7 +24,7 @@ fn main() {
     eframe::run_native(
         "Valor",
         eframe::NativeOptions::default(),
-        Box::new(move |_cc| Box::new(Valor::default())),
+        Box::new(move |_cc| Box::new(Valor::new())),
     )
     .expect("Failed to start graphics context");
 }

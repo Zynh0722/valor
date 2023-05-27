@@ -1,8 +1,8 @@
 #[derive(Debug)]
 pub struct Valor {}
 
-impl Default for Valor {
-    fn default() -> Self {
+impl Valor {
+    pub fn new() -> Self {
         Self {}
     }
 }
