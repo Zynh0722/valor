@@ -1,7 +1,7 @@
 use std::{println, sync::Arc};
 
 use tokio::sync::{oneshot, watch};
-use valor_lib::{watch_connection, ConnectionState};
+use valor::{watch_connection, ConnectionState};
 
 use tokio::sync::Mutex as TokioMutex;
 
