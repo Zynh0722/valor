@@ -9,31 +9,29 @@ pub async fn watch_connection(
     init_tx: oneshot::Sender<ConnectionState>,
     event_tx: watch::Sender<Option<Event>>,
 ) -> RecommendedWatcher {
-    {
-        let mut connection = ConnectionState::init().await;
+    let mut connection = ConnectionState::init().await;
 
-        while connection.known_path.is_none() {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-            connection = ConnectionState::init().await;
-        }
+    while connection.known_path.is_none() {
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        connection = ConnectionState::init().await;
+    }
 
-        let mut watcher = notify::recommended_watcher(move |res| match res {
-            Ok(event) => send_event(&event_tx, event),
-            Err(e) => println!("watch error: {e:?}"),
-        })
+    let mut watcher = notify::recommended_watcher(move |res| match res {
+        Ok(event) => send_event(&event_tx, event),
+        Err(e) => println!("watch error: {e:?}"),
+    })
+    .unwrap();
+
+    // Unwrap is safe here because known_path is Some
+    let lockfile = connection.lockfile.as_ref().unwrap();
+    let league_folder = lockfile.path.parent().unwrap();
+    watcher
+        .watch(&league_folder, RecursiveMode::NonRecursive)
         .unwrap();
 
-        // Unwrap is safe here because known_path is Some
-        let lockfile = connection.lockfile.as_ref().unwrap();
-        let league_folder = lockfile.path.parent().unwrap();
-        watcher
-            .watch(&league_folder, RecursiveMode::NonRecursive)
-            .unwrap();
+    init_tx.send(connection).unwrap();
 
-        init_tx.send(connection).unwrap();
-
-        watcher
-    }
+    watcher
 }
 
 fn send_event(tx: &watch::Sender<Option<Event>>, event: Event) {
