@@ -11,9 +11,7 @@ fn main() {
     // This lets tokio::spawn work
     let _enter = rt.enter();
 
-    println!("before init");
     let valor = rt.block_on(Valor::new());
-    println!("after init");
 
     eframe::run_native(
         "Valor",
