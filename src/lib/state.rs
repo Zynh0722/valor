@@ -53,6 +53,13 @@ impl ConnectionState {
         }
     }
 
+    pub fn none() -> Self {
+        Self {
+            lockfile: None,
+            known_path: None,
+        }
+    }
+
     pub async fn update_state(&mut self, event: Event) -> bool {
         let event_path = event
             .paths

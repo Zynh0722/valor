@@ -1,30 +1,13 @@
 use std::{println, sync::Arc};
 
 use tokio::sync::{oneshot, watch};
-use valor::{watch_connection, ConnectionState};
+use valor::{watch_connection, ConnectionState, Valor};
 
 use tokio::sync::Mutex as TokioMutex;
 
 #[derive(Debug)]
 struct AppState {
     connection: Arc<TokioMutex<ConnectionState>>,
-}
-
-#[derive(Debug)]
-struct Valor {}
-
-impl Default for Valor {
-    fn default() -> Self {
-        Self {}
-    }
-}
-
-impl eframe::App for Valor {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("Valor or something idk");
-        });
-    }
 }
 
 fn main() {
@@ -49,7 +32,7 @@ fn main() {
 // TODO: I believe all of this needs to be moved into the Valor eframe app
 async fn tokio_main() {
     let state = AppState {
-        connection: Arc::new(TokioMutex::new(ConnectionState::init().await)),
+        connection: Arc::new(TokioMutex::new(ConnectionState::none())),
     };
 
     let (watch_tx, mut watch_rx) = watch::channel::<Option<notify::Event>>(None);
