@@ -1,10 +1,6 @@
-use std::{
-    path::PathBuf,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{path::PathBuf, time::Duration};
 
-use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Event, RecursiveMode, Watcher};
 use tokio::sync::{oneshot, watch};
 
 use crate::ConnectionState;
@@ -12,7 +8,6 @@ use crate::ConnectionState;
 pub fn watch_connection(
     init_tx: oneshot::Sender<ConnectionState>,
     event_tx: watch::Sender<Option<Event>>,
-    watcher: Arc<Mutex<Option<RecommendedWatcher>>>,
 ) {
     tokio::spawn(async move {
         let mut connection = ConnectionState::init();
@@ -22,7 +17,7 @@ pub fn watch_connection(
             connection = ConnectionState::init();
         }
 
-        let mut inner_watcher = notify::recommended_watcher(move |res| match res {
+        let mut watcher = notify::recommended_watcher(move |res| match res {
             Ok(event) => send_event(&event_tx, event),
             Err(e) => println!("watch error: {e:?}"),
         })
@@ -31,14 +26,13 @@ pub fn watch_connection(
         // Unwrap is safe here because known_path is Some
         let lockfile = connection.lockfile.as_ref().unwrap();
         let league_folder = lockfile.path.parent().unwrap();
-        inner_watcher
+        watcher
             .watch(&league_folder, RecursiveMode::NonRecursive)
             .unwrap();
 
         init_tx.send(connection).unwrap();
 
-        let mut watcher = watcher.lock().unwrap();
-        *watcher = Some(inner_watcher);
+        Box::leak(Box::new(watcher));
     });
 }
 
