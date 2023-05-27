@@ -10,8 +10,14 @@ struct AppState {
     connection: Arc<TokioMutex<ConnectionState>>,
 }
 
-#[derive(Default)]
+#[derive(Debug)]
 struct Valor {}
+
+impl Default for Valor {
+    fn default() -> Self {
+        Self {}
+    }
+}
 
 impl eframe::App for Valor {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -27,6 +33,7 @@ fn main() {
         .build()
         .expect("Unable to start tokio runtime");
 
+    // This lets tokio::spawn work
     let _enter = rt.enter();
 
     std::thread::spawn(move || rt.block_on(tokio_main()));
@@ -34,11 +41,12 @@ fn main() {
     eframe::run_native(
         "Valor",
         eframe::NativeOptions::default(),
-        Box::new(|_cc| Box::new(Valor::default())),
+        Box::new(move |_cc| Box::new(Valor::default())),
     )
     .expect("Failed to start graphics context");
 }
 
+// TODO: I believe all of this needs to be moved into the Valor eframe app
 async fn tokio_main() {
     let state = AppState {
         connection: Arc::new(TokioMutex::new(ConnectionState::init().await)),
