@@ -1,24 +1,23 @@
-use std::{println, sync::Arc};
+use std::sync::Arc;
 
 use crate::{watch_connection, ConnectionState};
 use notify::RecommendedWatcher;
 use tokio::sync::{oneshot, watch};
 
-use std::sync::Mutex as StdMutex;
-use tokio::sync::Mutex as TokioMutex;
+use std::sync::Mutex;
 
 #[derive(Debug)]
 pub struct Valor {
     #[allow(dead_code)]
-    connection: Arc<TokioMutex<ConnectionState>>,
+    connection: Arc<Mutex<ConnectionState>>,
     #[allow(dead_code)]
-    watcher: Arc<StdMutex<Option<RecommendedWatcher>>>,
+    watcher: Arc<Mutex<Option<RecommendedWatcher>>>,
 }
 
 impl Valor {
     pub async fn new() -> Self {
-        let connection = Arc::new(TokioMutex::new(ConnectionState::none()));
-        let watcher = Arc::new(StdMutex::new(None));
+        let connection = Arc::new(Mutex::new(ConnectionState::none()));
+        let watcher = Arc::new(Mutex::new(None));
 
         let (watch_tx, mut watch_rx) = watch::channel::<Option<notify::Event>>(None);
         let (init_tx, init_rx) = oneshot::channel::<ConnectionState>();
@@ -30,9 +29,8 @@ impl Valor {
             let connection = connection.clone();
             tokio::spawn(async move {
                 let initial_state = init_rx.await.unwrap();
-                let mut connection = connection.lock().await;
+                let mut connection = connection.lock().unwrap();
                 *connection = initial_state;
-                print_connection(&connection);
             });
         }
 
@@ -42,11 +40,8 @@ impl Valor {
                 while watch_rx.changed().await.is_ok() {
                     let event = watch_rx.borrow().clone().unwrap();
 
-                    let mut connection = connection.lock().await;
-                    let updated = connection.update_state(event).await;
-                    if updated {
-                        print_connection(&connection);
-                    }
+                    let mut connection = connection.lock().unwrap();
+                    connection.update_state(event);
                 }
             });
         }
@@ -62,14 +57,12 @@ impl Valor {
 impl eframe::App for Valor {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("Valor or something idk");
+            let label = if self.connection.lock().unwrap().lockfile.is_some() {
+                "Connected"
+            } else {
+                "Disconnected"
+            };
+            ui.label(label);
         });
     }
-}
-
-fn print_connection(connection: &ConnectionState) {
-    println!(
-        "lockfile: {:#?}\nknown_path: {:#?}",
-        connection.lockfile, connection.known_path
-    );
 }

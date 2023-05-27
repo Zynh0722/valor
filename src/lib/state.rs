@@ -30,7 +30,7 @@ pub struct ConnectionState {
 // }
 
 impl ConnectionState {
-    pub async fn init() -> Self {
+    pub fn init() -> Self {
         let lockfile = LeagueClientConnector::parse_lockfile().ok();
         let known_path = lockfile.as_ref().map(|lf| lf.path.clone());
 
@@ -60,7 +60,7 @@ impl ConnectionState {
         }
     }
 
-    pub async fn update_state(&mut self, event: Event) -> bool {
+    pub fn update_state(&mut self, event: Event) -> bool {
         let event_path = event
             .paths
             .iter()

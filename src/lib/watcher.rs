@@ -15,11 +15,11 @@ pub fn watch_connection(
     watcher: Arc<Mutex<Option<RecommendedWatcher>>>,
 ) {
     tokio::spawn(async move {
-        let mut connection = ConnectionState::init().await;
+        let mut connection = ConnectionState::init();
 
         while connection.known_path.is_none() {
             tokio::time::sleep(Duration::from_secs(1)).await;
-            connection = ConnectionState::init().await;
+            connection = ConnectionState::init();
         }
 
         let mut inner_watcher = notify::recommended_watcher(move |res| match res {
