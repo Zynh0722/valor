@@ -14,26 +14,26 @@ impl Valor {
         let _file_system_watcher = watch_connection(init_tx, watch_tx);
 
         // Main app layer start
-        {
+        tokio::spawn({
             let connection = connection.clone();
-            tokio::spawn(async move {
+            async move {
                 let initial_state = init_rx.await.unwrap();
                 let mut connection = connection.lock().unwrap();
                 *connection = initial_state;
-            });
-        }
+            }
+        });
 
-        {
+        tokio::spawn({
             let connection = connection.clone();
-            tokio::spawn(async move {
+            async move {
                 while watch_rx.changed().await.is_ok() {
                     let event = watch_rx.borrow().clone().unwrap();
 
                     let mut connection = connection.lock().unwrap();
                     connection.update_state(event);
                 }
-            });
-        }
+            }
+        });
 
         // Main app layer end
         Self { connection }
