@@ -10,6 +10,17 @@ struct AppState {
     connection: Arc<TokioMutex<ConnectionState>>,
 }
 
+#[derive(Default)]
+struct Valor {}
+
+impl eframe::App for Valor {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.label("Valor or something idk");
+        });
+    }
+}
+
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -18,9 +29,14 @@ fn main() {
 
     let _enter = rt.enter();
 
-    std::thread::spawn(move || rt.block_on(tokio_main()))
-        .join()
-        .expect("Bad Join");
+    std::thread::spawn(move || rt.block_on(tokio_main()));
+
+    eframe::run_native(
+        "Valor",
+        eframe::NativeOptions::default(),
+        Box::new(|_cc| Box::new(Valor::default())),
+    )
+    .expect("Failed to start graphics context");
 }
 
 async fn tokio_main() {
